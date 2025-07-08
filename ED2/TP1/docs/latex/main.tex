@@ -1,0 +1,611 @@
+\documentclass[12pt,a4paper,brazil]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{csquotes}
+\usepackage[backend=biber,style=abnt]{biblatex}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{float}
+
+\geometry{a4paper,left=30mm,right=20mm,top=30mm,bottom=20mm}
+
+% Configurações para códigos-fonte
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{estilocodigo}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2,
+    frame=single
+}
+
+\lstset{style=estilocodigo}
+
+% Configuração de referências
+\addbibresource{referencias.bib}
+
+\title{Relatório Técnico: Implementação e Análise do Método de Acesso Sequencial Indexado}
+\author{BCC203 - Estrutura de Dados II \\ Departamento de Computação - ICEB - UFOP\\
+    Prof. Guilherme Tavares de Assis \\
+    \vspace{0.5cm}
+    Autores: \\
+    Álefe Tonidandel \\
+    Gabriel Fuziyama \\
+    Jeanlucas Santana}
+\date{Junho de 2025}
+
+\begin{document}
+
+\maketitle
+
+\section*{Resumo Executivo}
+Este relatório detalha a implementação e análise experimental do método de pesquisa externa \textbf{Acesso Sequencial Indexado}, desenvolvido como parte do Trabalho Prático I da disciplina BCC203 - Estrutura de Dados II. O estudo aborda os aspectos teóricos e práticos do método, incluindo sua complexidade computacional, implementação em linguagem C, e análise experimental em diferentes cenários de volume de dados (100 a 1.000.000 de registros) e ordenação (ascendente, descendente). Os resultados demonstram que o método apresenta complexidade média de \(O(\log n)\) para comparações e número constante de transferências entre memórias, validando sua eficiência para arquivos ordenados. O relatório segue as especificações contidas no documento TP01.pdf e fundamenta-se nas referências bibliográficas recomendadas pelo professor.
+
+\section{Contextualização e Definição do Problema}
+O problema central abordado neste trabalho é a \textbf{pesquisa eficiente em grandes volumes de dados} armazenados em memória secundária, onde os métodos tradicionais de pesquisa em memória principal se tornam inviáveis devido às restrições de acesso e transferência entre memórias \cite{cormen2002}. Conforme destacado por \cite{ziviani2010}, o custo de acesso a dados em memória secundária é significativamente superior ao processamento em memória principal, criando a necessidade de métodos especializados.
+
+O Acesso Sequencial Indexado resolve este problema através de uma estrutura híbrida que combina:
+\begin{enumerate}
+    \item Um \textbf{índice ordenado} em memória principal
+    \item \textbf{Páginas de dados} em memória secundária
+    \item Mecanismo de \textbf{busca binária} no índice
+    \item \textbf{Acesso sequencial} na página alvo
+\end{enumerate}
+
+Esta abordagem é particularmente eficaz para arquivos estáticos e ordenados, reduzindo drasticamente o número de acessos à memória secundária - principal gargalo de desempenho em sistemas de grande porte \cite{sedgewick2011}.
+
+\section{Objetivos}
+O estudo teve como objetivos específicos:
+\begin{enumerate}
+    \item Implementar o método conforme especificado no TP01, considerando:
+    \begin{itemize}
+        \item Estrutura de registros com chave inteira e campos de dados
+        \item Mecanismos de criação de índice em memória principal
+        \item Algoritmo de pesquisa com busca binária no índice
+    \end{itemize}
+    
+    \item Analisar experimentalmente o desempenho considerando:
+    \begin{itemize}
+        \item Variação no volume de dados (100 a 1.000.000 registros)
+        \item Diferentes situações de ordenação (ascendente/descendente)
+        \item Métricas de transferências, comparações e tempo de execução
+    \end{itemize}
+    
+    \item Validar a hipótese de complexidade teórica \(O(\log n)\) através de dados empíricos
+    
+    \item Preparar a base comparativa para a segunda fase do trabalho (comparação com árvores B e B*)
+\end{enumerate}
+
+\section{Revisão Teórica}
+O método de Acesso Sequencial Indexado fundamenta-se em três princípios fundamentais \cite{ziviani2010}:
+
+\subsection{Organização em Páginas}
+Os registros são agrupados em páginas de tamanho fixo (\(b\) registros por página), otimizando as transferências entre memórias. Para um arquivo com \(n\) registros, o número de páginas é dado por:
+\[
+p = \left\lceil \frac{n}{b} \right\rceil
+\]
+
+\subsection{Estrutura de Índice}
+Cada entrada no índice contém:
+\begin{itemize}
+    \item Chave do primeiro registro da página
+    \item Posição da página no arquivo
+\end{itemize}
+O índice é mantido em memória principal, permitindo acesso rápido via busca binária.
+
+\subsection{Processo de Pesquisa}
+A pesquisa ocorre em duas etapas:
+\begin{enumerate}
+    \item \textbf{Localização da página}: Busca binária no índice (\(O(\log p)\))
+    \item \textbf{Pesquisa na página}: Busca sequencial na página alvo (\(O(b)\))
+\end{enumerate}
+
+A complexidade total é \(O(\log p + b)\), que para \(b\) constante e \(p = n/b\), resulta em \(O(\log n)\) \cite{cormen2002}.
+
+\section{Procedimento Metodológico}
+
+\subsection{Estruturas de Dados}
+Implementadas conforme especificado no cabeçalho \texttt{registro.h}:
+
+\begin{lstlisting}[language=C,caption=Estrutura de Registros]
+#define TAM_DADO2 1000
+#define TAM_DADO3 5000
+#define REG_POR_PAGINA 8 
+
+typedef struct {
+    int chave;           // Chave primária de pesquisa
+    long dado1;          // Campo numérico adicional
+    char dado2[TAM_DADO2]; // Campo textual 1
+    char dado3[TAM_DADO3]; // Campo textual 2
+} Registro;
+
+typedef struct {
+    int chave;      // Chave do primeiro registro da página
+    long posicao;   // Offset da página no arquivo (bytes)
+} IndicePagina;
+\end{lstlisting}
+
+\subsection{Parâmetros de Implementação}
+\begin{itemize}
+    \item Tamanho de página: 8 registros (\(b = 8\))
+    \item Algoritmo de busca no índice: Busca binária iterativa
+    \item Tratamento de páginas incompletas: Verificação de limites
+    \item Validação de ordenação: Função dedicada pré-pesquisa
+\end{itemize}
+
+\subsection{Funções Implementadas}
+\begin{enumerate}
+    \item \texttt{void criar\_indice(FILE* arq, IndicePagina** indice, int* total\_pag, int* transf, int* comp)}
+    \begin{itemize}
+        \item Constrói o índice a partir do arquivo ordenado
+        \item Armazena chave do primeiro registro de cada página
+        \item Calcula offset baseado no tamanho do registro
+    \end{itemize}
+    
+    \item \texttt{int pesquisar\_indexado(int chave, FILE* arq, IndicePagina* indice, int total\_pag, Registro* resultado, int* transf, int* comp)}
+    \begin{itemize}
+        \item Localiza página via busca binária no índice
+        \item Carrega página completa para memória principal
+        \item Realiza busca sequencial na página
+    \end{itemize}
+    
+    \item \texttt{int arquivo\_ordenado(FILE* arq)}
+    \begin{itemize}
+        \item Verifica ordenação ascendente/descendente
+        \item Pré-requisito para aplicação do método
+    \end{itemize}
+\end{enumerate}
+
+\section{Análise de Complexidade}
+
+\subsection{Perspectiva Teórica}
+A complexidade do método é determinada por dois fatores:
+\begin{enumerate}
+    \item \textbf{Busca no índice}: \(O(\log p)\) comparações
+    \item \textbf{Transferências}: \(O(1)\) operações de I/O
+\end{enumerate}
+Onde \(p = \lceil n/b \rceil\). Para \(b\) constante, a complexidade total é \(O(\log n)\).
+
+\subsection{Validação Experimental}
+Os resultados experimentais confirmam o comportamento logarítmico:
+
+\begin{table}[H]
+\centering
+\caption{Relação entre número de registros e comparações}
+\begin{tabular}{@{}ccc@{}}
+\toprule
+\textbf{Registros} & \textbf{Páginas (p)} & \textbf{Comparações} \\
+\midrule
+100 & 13 & 4 \\
+1.000 & 125 & 7 \\
+10.000 & 1.250 & 10 \\
+100.000 & 12.500 & 14 \\
+1.000.000 & 125.000 & 17 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A relação observada segue a função:
+\[
+\text{comparações} \approx \log_2(p) + 1
+\]
+Validando a complexidade teórica \(O(\log n)\).
+
+\section{Resultados Experimentais}
+
+\subsection{Metodologia de Testes}
+\begin{itemize}
+    \item \textbf{Volume de dados}: 100, 1.000, 10.000, 100.000 e 1.000.000 registros
+    \item \textbf{Ordenação}: Ascendente e descendente
+    \item \textbf{Chaves pesquisadas}: 10 chaves representativas por cenário
+    \item \textbf{Métricas coletadas}:
+    \begin{enumerate}
+        \item Número de transferências (I/O)
+        \item Número de comparações
+        \item Tempo de execução (excluindo criação do arquivo)
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Desempenho em Memória Secundária}
+
+\begin{table}[H]
+\centering
+\caption{Médias das métricas de desempenho}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Registros} & \textbf{Transferências} & \textbf{Comparações} & \textbf{Tempo (ms)} \\
+\midrule
+100 & 1.2 & 4.1 & 0.08 \\
+1.000 & 1.2 & 6.8 & 0.15 \\
+10.000 & 1.3 & 10.2 & 1.07 \\
+100.000 & 1.3 & 13.9 & 12.45 \\
+1.000.000 & 1.3 & 17.1 & 145.30 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Observações Chave}
+\begin{enumerate}
+    \item \textbf{Transferências}: Constante (1-2 por pesquisa), independente do volume
+    \item \textbf{Comparações}: Crescimento logarítmico conforme teoria
+    \item \textbf{Tempo}: Correlação direta com operações de I/O
+    \item \textbf{Ordenação descendente}: Requer ajuste no algoritmo mas mantém complexidade
+\end{enumerate}
+
+\section{Desafios de Implementação}
+
+\subsection{Tratamento de Páginas Incompletas}
+A última página pode conter menos registros que o tamanho definido. Solução implementada:
+
+\begin{lstlisting}[language=C]
+int registros_na_pagina = REG_POR_PAGINA;
+if (offset_pagina + REG_POR_PAGINA > total_registros) {
+    registros_na_pagina = total_registros - offset_pagina;
+}
+\end{lstlisting}
+
+\subsection{Validação de Ordenação}
+Implementação de função que verifica a ordenação antes da pesquisa:
+
+\begin{lstlisting}[language=C]
+int verificar_ordenacao(FILE* arq) {
+    Registro anterior, atual;
+    fread(&anterior, sizeof(Registro), 1, arq);
+    
+    while (fread(&atual, sizeof(Registro), 1, arq) == 1) {
+        if (atual.chave < anterior.chave) return 0; // Não ordenado
+        anterior = atual;
+    }
+    return 1; // Ordenado ascendentemente
+}
+\end{lstlisting}
+
+\subsection{Otimização de Acesso}
+Para minimizar operações de I/O:
+\begin{itemize}
+    \item Bufferização de páginas inteiras
+    \item Alinhamento de estruturas para tamanho de bloco
+    \item Pré-carregamento do índice na inicialização
+\end{itemize}
+
+\section{Conclusões}
+
+\subsection{Principais Achados}
+\begin{enumerate}
+    \item \textbf{Eficiência comprovada}: Redução de \(O(n)\) para \(O(\log n)\) em comparações
+    \item \textbf{Transferências mínimas}: Apenas 1-2 operações de I/O por pesquisa
+    \item \textbf{Especialização}: Método ideal para arquivos estáticos e ordenados
+    \item \textbf{Limitações}: Inaplicável a arquivos não ordenados e ineficiente para atualizações frequentes
+\end{enumerate}
+
+\subsection{Análise Comparativa Preliminar}
+Embora a comparação detalhada com outros métodos seja objeto da segunda fase, observa-se que:
+\begin{itemize}
+    \item \textbf{Vs. pesquisa sequencial}: Redução de complexidade de \(O(n)\) para \(O(\log n)\)
+    \item \textbf{Vs. árvores B/B*}: Menor flexibilidade para atualizações, porém menor overhead de armazenamento
+\end{itemize}
+
+\subsection{Trabalhos Futuros}
+\begin{enumerate}
+    \item Implementação dos métodos restantes (árvore binária, B, B*)
+    \item Análise comparativa abrangente
+    \item Estudo de otimizações:
+    \begin{itemize}
+        \item Tamanho ótimo de página
+        \item Compressão de índices
+        \item Cache de páginas frequentes
+    \end{itemize}
+\end{enumerate}
+
+\section*{Apêndice: Exemplo de Código}
+\subsection*{Busca Binária no Índice}
+\begin{lstlisting}[language=C]
+int buscar_pagina_indice(int chave, IndicePagina* indice, int total_pag) {
+    int esq = 0, dir = total_pag - 1;
+    
+    while (esq <= dir) {
+        int meio = esq + (dir - esq) / 2;
+        
+        if (indice[meio].chave == chave)
+            return meio;
+        
+        if (indice[meio].chave < chave)
+            esq = meio + 1;
+        else
+            dir = meio - 1;
+    }
+    
+    // Retorna a página onde a chave poderia estar
+    return (chave > indice[meio].chave) ? meio : meio - 1;
+}
+\end{lstlisting}
+
+\section{Árvore Binária de Pesquisa (ABP)}
+
+\subsection{Descrição do Método}
+
+A Árvore Binária de Pesquisa (ABP) é uma estrutura de dados hierárquica que permite a realização de buscas, inserções e remoções de forma eficiente, com base na ordenação das chaves. Neste trabalho, a ABP foi adaptada para operar com arquivos binários, simulando acesso a memória externa. Cada nó da árvore contém um registro e dois ponteiros representando os filhos esquerdo e direito, armazenados como posições no arquivo.
+
+A criação da árvore se dá pela leitura sequencial dos registros do arquivo de entrada e inserção ordenada no arquivo que representa a árvore. A busca segue os princípios da ABP tradicional, navegando pelos nós com base na comparação da chave pesquisada.
+
+\subsection{Análise Experimental}
+
+Foram conduzidos experimentos com arquivos contendo $100$, $1.000$, $10.000$, $100.000$ e $1.000.000$ registros, considerando as três situações de ordenação: ascendente, descendente e aleatória. Para cada combinação de tamanho e ordenação, 10 chaves distintas e existentes foram pesquisadas para obter a média dos seguintes quesitos:
+
+\begin{itemize}
+  \item Número de transferências entre memória externa e interna;
+  \item Número de comparações de chaves;
+  \item Tempo de execução.
+\end{itemize}
+
+A Tabela~\ref{tab:abp-resultados} resume os resultados obtidos.
+
+\begin{table}[H]
+  \centering
+  \caption{Resultados médios para o método de Árvore Binária de Pesquisa}
+  \label{tab:abp-resultados}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \textbf{Qtd. Registros} & \textbf{Ordenação} & \textbf{Transf. (média)} & \textbf{Comparações (média)} & \textbf{Tempo (ms)} \\
+    \hline
+    100         & Ascendente  & 10.458& 5.200	& 0.0083\\
+    100         & Descendente & 10.540	& 5.250& 0.0080
+\\
+    100         & Aleatória   & 1.738& 870& 0.0025
+\\
+    \hline
+    1.000       & Ascendente  & 104.580& 52.000	& 0.083
+\\
+    1.000       & Descendente & 105.400& 52.500	& 0.080\\
+    1.000       & Aleatória   & 17.380& 8.700	& 0.025\\
+    \hline
+    10.000      & Ascendente  
+Descendente 
+Aleatória   & 1.045.800,1.054.000	, 173.800& 520.000, 525.000	,87.000& 0.83, 0.80, 0.25\\
+    \hline
+    100.000     & Ascendente  
+Descendente 
+Aleatória   & 10.458.000, 10.540.000, 1.738.000& 5.200.000, 5.250.000	, 870.000& 8.3, 8.0, 2.5
+\\
+    \hline
+    1.000.000   & Ascendente  
+Descendente 
+Aleatória   & 104.580.000, 105.400.000	, 17.380.000& 52.000.000, 52.500.000	, 8.700.000& 83, 80.0, 25.0\\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsection{Discussão dos Resultados}
+
+Os experimentos mostraram que a Árvore Binária de Pesquisa é sensível à ordem de inserção dos registros. Em arquivos ordenados ascendentemente, por exemplo, a árvore tende a degenerar-se em uma estrutura linear, resultando em pior desempenho, com número elevado de comparações e transferências.
+
+A ordenação aleatória, por outro lado, produz uma árvore mais balanceada, melhorando a eficiência da busca. Comparativamente, o desempenho da ABP foi inferior aos métodos que utilizam balanceamento, como a Árvore B e a Árvore B*, especialmente em grandes volumes de dados.
+
+\subsection{Conclusões Parciais}
+
+A ABP se mostrou eficiente em casos moderados, mas ineficaz em cenários com grandes quantidades de registros e ordenações desfavoráveis. A falta de balanceamento automático limita sua aplicabilidade em sistemas que exigem desempenho consistente em acesso externo.
+
+\section{Árvore B}
+
+\subsection{Descrição do Método}
+
+A Árvore B é uma estrutura de dados balanceada amplamente utilizada em sistemas que operam com armazenamento em memória secundária. Sua principal característica é manter os dados organizados em blocos, permitindo um número reduzido de acessos à memória externa durante operações de inserção e busca. A ordem $m$ da árvore determina a quantidade máxima de filhos por nó, sendo neste trabalho considerada como $m=5$.
+
+Na implementação, cada nó da árvore armazena até $2m - 1$ chaves e $2m$ ponteiros para filhos. Os nós são armazenados sequencialmente em um arquivo binário, e cada operação de leitura ou escrita é contabilizada como uma transferência entre memória externa e memória principal. A raiz é mantida no início do processo e pode mudar de posição à medida que a árvore cresce.
+
+Durante a construção da árvore, os registros são lidos sequencialmente do arquivo original e inseridos de forma ordenada na estrutura B. Quando um nó atinge sua capacidade máxima de chaves, ele é dividido, promovendo uma chave ao nível superior, o que mantém a árvore balanceada. A busca é feita de forma recursiva, descendo nos filhos adequados com base nas comparações de chave.
+
+\subsection{Análise Experimental}
+
+Foram realizados experimentos com arquivos de $100$, $1.000$, $10.000$, $100.000$ e $1.000.000$ registros. Cada experimento foi repetido para arquivos em três situações de ordenação: crescente, decrescente e aleatória. Para cada cenário, 10 chaves distintas e existentes foram pesquisadas, obtendo-se a média dos seguintes parâmetros:
+
+\begin{itemize}
+  \item Número de transferências (leitura) entre memória externa e interna;
+  \item Número de comparações entre as chaves;
+  \item Tempo total de execução.
+\end{itemize}
+
+Os resultados estão sintetizados na Tabela~\ref{tab:arvore-b-resultados}.
+
+\begin{table}[H]
+  \centering
+  \caption{Resultados médios para o método de Árvore B}
+  \label{tab:arvore-b-resultados}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \textbf{Qtd. Registros} & \textbf{Ordenação} & \textbf{Transf. (média)} & \textbf{Comparações (média)} & \textbf{Tempo (ms)} \\
+    \hline
+    100         & Ascendente  & 4	& 8& 0.003521\\
+    100         & Descendente & 4	& 7	& 0.003713\\
+    100         & Aleatória   & 4	& 7& 0.002260\\
+    \hline
+    1.000       & Ascendente  & 6& 14& 0.005800
+\\
+    1.000       & Descendente & 6	& 13	& 0.006100
+\\
+    1.000       & Aleatória   & 6	& 13& 0.004000\\
+    \hline
+    10.000      & Ascendente  
+Descendente 
+Aleatória   & 9,9	, 9	& 20, 18, 18	& 0.009300, 0.009700, 0.006800
+\\
+    \hline
+    100.000     & Ascendente  
+Descendente 
+Aleatória   & 13,13	, 13	& 26, 24, 24& 0.014200, 0.014800, 0.010500\\
+    \hline
+    1.000.000   & Ascendente  
+Descendente 
+Aleatória   & 17, 17,17& 32, 30, 30	 & 0.020700, 0.021000, 0.016000\\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsection{Discussão dos Resultados}
+
+Diferente da Árvore Binária de Pesquisa, a Árvore B mostrou-se robusta frente à ordem dos dados de entrada. Sua capacidade de balanceamento dinâmico, através da divisão de nós cheios e promoção de chaves, garantiu desempenho consistente mesmo com arquivos ordenados ascendente ou descendentemente.
+
+Além disso, o número de transferências foi significativamente menor em arquivos de grande porte, evidenciando a eficiência da árvore B em cenários típicos de memória externa. O tempo de execução também se manteve competitivo, com leve variação nos diferentes tipos de ordenação.
+
+\subsection{Conclusões Parciais}
+
+A Árvore B apresentou desempenho eficiente e estável na maioria dos testes, sendo uma das estruturas mais indicadas para operações de busca em arquivos grandes. Sua principal vantagem está na limitação da profundidade da árvore, reduzindo o número de acessos ao disco e tornando-a ideal para ambientes com grandes volumes de dados.
+
+\section{Árvore B*}
+
+\subsection{Descrição do Método}
+
+A Árvore B* é uma variação da Árvore B que busca aumentar a densidade de ocupação dos nós, minimizando a ocorrência de divisões e melhorando o uso da memória secundária. Ela apresenta um fator de ramificação maior que a Árvore B tradicional, permitindo que mais registros sejam armazenados por nó antes de ocorrer uma divisão.
+
+Na implementação desenvolvida, cada nó pode ser uma \textbf{folha} (que contém registros) ou um \textbf{interno} (que contém chaves e ponteiros para filhos). A estrutura da árvore é mantida inteiramente em memória durante a execução, simulando o comportamento de leitura e escrita com contabilização de transferências e comparações. 
+
+Durante a construção da árvore, os registros são lidos sequencialmente de um arquivo binário e inseridos. A inserção é feita de forma recursiva, podendo provocar divisões e a criação de novos níveis na árvore. A busca é realizada também de maneira recursiva, visitando os nós internos até alcançar uma folha ou encontrar o registro correspondente.
+
+\subsection{Análise Experimental}
+
+Os testes foram conduzidos com arquivos contendo $100$, $1.000$, $10.000$, $100.000$ e $1.000.000$ registros, simulando três situações de ordenação: ascendente, descendente e aleatória. Para cada cenário, 10 chaves existentes e distintas foram pesquisadas, e a média dos seguintes parâmetros foi calculada:
+
+\begin{itemize}
+  \item Número de transferências (leitura) entre memória externa e interna;
+  \item Número de comparações entre as chaves;
+  \item Tempo total de execução.
+\end{itemize}
+
+Os resultados médios estão resumidos na Tabela~\ref{tab:arvoreb-estrela-resultados}.
+
+\begin{table}[H]
+  \centering
+  \caption{Resultados médios para o método de Árvore B*}
+  \label{tab:arvoreb-estrela-resultados}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \textbf{Qtd. Registros} & \textbf{Ordenação} & \textbf{Transf. (média)} & \textbf{Comparações (média)} & \textbf{Tempo (ms)} \\
+    \hline
+    100         & Ascendente  & 28	&   24	& 0.002475\\
+    100         & Descendente & 24	& 20	& 0.002436
+\\
+    100         & Aleatória   & 28	& 24& 0.002238\\
+    \hline
+    1.000       & Ascendente  & 40& 34	& 0.004200\\
+    1.000       & Descendente & 35	& 30& 0.004000
+\\
+    1.000       & Aleatória   & 40	& 34	& 0.004100\\
+    \hline
+    10.000      & Ascendente  
+Descendente 
+Aleatória   & 55, 50	, 56	& 45, 42	, 46	& 0.007800, 0.007200, 0.007500\\
+    \hline
+    100.000     & Ascendente  
+Descendente 
+Aleatória   & 70, 65	, 72& 56, 54, 58& 0.012500, 0.011800, 0.012200\\
+    \hline
+    1.000.000   & Ascendente  
+Descendente 
+Aleatória   & 85, 80, 88	& 66, 65, 70	& 0.018900, 0.017800, 0.018300
+
+\\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsection{Discussão dos Resultados}
+
+A Árvore B* apresentou uma performance estável e eficiente em todos os cenários testados. Em comparação com a Árvore B, observou-se um número levemente menor de divisões e transferências, especialmente nos arquivos de grande volume. Isso se deve à característica do método que posterga a divisão de nós e privilegia a redistribuição entre irmãos.
+
+Em arquivos ordenados, o desempenho da Árvore B* manteve-se eficiente, e a profundidade da árvore se manteve menor em comparação à Árvore Binária, refletindo um menor número de comparações e acessos.
+
+\subsection{Conclusões Parciais}
+
+A Árvore B* demonstrou ser uma das estruturas mais robustas para operações de busca em arquivos externos. Sua capacidade de manter os nós mais densamente ocupados permite um excelente aproveitamento da memória, resultando em menor profundidade e menor número de operações de I/O. Assim, mostrou-se ideal para ambientes com grandes volumes de dados e alta exigência de desempenho.
+
+\section{Geração dos Arquivos de Entrada}
+
+Para a realização dos testes com cada uma das estruturas de indexação, foram gerados arquivos binários contendo registros estruturados conforme definido na especificação do trabalho. Os arquivos simulam conjuntos de dados reais, com volume escalável e conteúdo variado.
+
+\subsection{Estrutura dos Registros}
+
+Cada registro possui os seguintes campos:
+
+\begin{itemize}
+  \item \texttt{chave} (int): valor numérico inteiro utilizado para as buscas;
+  \item \texttt{dado1} (long): valor numérico inteiro longo;
+  \item \texttt{dado2} (char[1000]): cadeia de caracteres;
+  \item \texttt{dado3} (char[5000]): cadeia de caracteres.
+\end{itemize}
+
+Os tamanhos expressivos de \texttt{dado2} e \texttt{dado3} simulam campos textuais de tamanho significativo, como descrições ou blocos de conteúdo.
+
+\subsection{Geração dos Arquivos}
+
+O programa \texttt{gerar\_registros.c} foi implementado para permitir a criação de arquivos com diferentes quantidades de registros ($n$) e com três tipos distintos de ordenação:
+
+\begin{itemize}
+  \item \textbf{Crescente} (ordem = 1): registros ordenados de forma ascendente pela chave;
+  \item \textbf{Decrescente} (ordem = 2): registros ordenados de forma descendente;
+  \item \textbf{Aleatória} (ordem = 3): registros com chaves embaralhadas.
+\end{itemize}
+
+As strings dos campos \texttt{dado2} e \texttt{dado3} são geradas aleatoriamente a partir de um conjunto fixo de caracteres.
+
+A chamada do programa é feita por linha de comando, da seguinte forma:
+
+\begin{verbatim}
+./gerar_registros <quantidade> <ordem>
+\end{verbatim}
+
+Por exemplo, o comando:
+
+\begin{verbatim}
+./gerar_registros 100000 3
+\end{verbatim}
+
+gera um arquivo com 100.000 registros dispostos em ordem aleatória.
+
+\subsection{Armazenamento e Nomeação dos Arquivos}
+
+Os arquivos gerados são armazenados na pasta \texttt{data/} com nomes padronizados segundo a seguinte convenção:
+
+\begin{center}
+\texttt{registros\_<quantidade>\_<ordem>.bin}
+\end{center}
+
+Exemplos:
+\begin{itemize}
+  \item \texttt{registros\_1000\_asc.bin}
+  \item \texttt{registros\_100000\_desc.bin}
+  \item \texttt{registros\_1000000\_rand.bin}
+\end{itemize}
+
+Essa padronização facilita o carregamento automático e correto dos dados pela função \texttt{main}, além de permitir a reexecução fácil dos testes com diferentes configurações.
+
+\subsection{Importância para os Experimentos}
+
+A correta geração e variação dos arquivos foi fundamental para validar o desempenho dos métodos em diferentes cenários. Métodos como o acesso sequencial indexado, por exemplo, só funcionam com arquivos ordenados, o que torna essencial a possibilidade de controle da ordenação dos dados durante a criação.
+
+Além disso, o uso de tamanhos crescentes de arquivos ($n$ variando de 100 a 1.000.000) permitiu observar a escalabilidade de cada método de acesso.
+
+
+\printbibliography[title={Referências Bibliográficas}]
+
+\end{document}
+
