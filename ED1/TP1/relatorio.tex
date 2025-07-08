@@ -1,0 +1,309 @@
+\documentclass{article}
+
+\input{setup}
+
+\begin{document}
+
+\CAPA{TP - 01}{BCC202 - Estrutura de Dados}{Jeanlucas Ferreira Santana}{Pedro Henrique Lopes Silva}
+
+
+\section{Introdução}
+
+\DESCRICAO{Breve Introdução sobre o trabalho sendo feito}
+
+O problema em questão envolve a simulação de um autômato celular conhecido como Jogo da Vida de Conway. A tarefa é implementar um modelo que simula o comportamento de uma grade bidimensional de células, onde cada célula pode estar viva (\verb|1|) ou morta (\verb|0|). A grade evolui ao longo do tempo seguindo regras específicas que determinam o estado de cada célula na próxima geração com base no número de vizinhos vivos ao seu redor. 
+
+\subsection{Especificações do problema}
+
+\DESCRICAO{Descrição do problema a ser atacado (Ex: Precisamos encontrar a frequência das palavras num determinado conjunto de arquivos ou precisamos tornar transparente a programação paralela ou distribuída para o usuário)}
+
+\subsection{Considerações iniciais}
+
+Algumas ferramentas foram utilizadas durante a criação deste projeto:
+
+\begin{itemize}
+  \item Ambiente de desenvolvimento do código fonte: Visual Studio Code. \footnote{????? está disponível em \url{https://www.}}
+  \item Linguagem utilizada: C.
+  \item Ambiente de desenvolvimento da documentação: Overleaf \LaTeX. \footnote{Disponível em \url{https://www.overleaf.com/}}
+\end{itemize}
+
+\subsection{Ferramentas utilizadas}
+Algumas ferramentas foram utilizadas para testar a implementação, como:
+\begin{itemize}
+    \item[-] \textit{Valgrind}: ferramentas de análise dinâmica do código.
+\end{itemize}
+
+\subsection{Especificações da máquina}
+A máquina onde o desenvolvimento e os testes foram realizados possui a seguinte configuração:
+\begin{itemize}
+    \item[-] Processador: Intel Core i7-8750H.
+    \item[-] Memória RAM: 32Gb.
+    \item[-] Sistema Operacional: Windows 10, Ubuntu.
+\end{itemize}
+
+\subsection{Instruções de compilação e execução}
+
+Para a compilação do projeto, basta digitar:
+
+\begin{tcolorbox}[title=Compilando o projeto,width=\linewidth]
+    gcc -c automato.c -Wall
+    gcc -c tp.c -Wall
+    gcc automato.o tp.o -o exe
+\end{tcolorbox}
+
+Usou-se para a compilação as seguintes opções:
+\begin{itemize}
+    \item [-] \emph{-Wall}: para mostrar todos os possível \emph{warnings} do código.
+    \item [-] -o: para linkar os arquivos objeto que compõem o programa e gerar o executável. 
+\end{itemize}
+
+Para a execução do programa basta digitar:
+\begin{tcolorbox}[title=,width=\linewidth]
+    ./exe 
+\end{tcolorbox}
+
+Onde exe e o arquivo executável do projeto 
+
+\clearpage
+\section{Desenvolvimento}
+
+\noindent\DESCRICAO{Descrição sobre a implementação do programa. Não faça ``print screens'' de telas. Ao contrário, procure resumir ao máximo a documentação, fazendo referência ao que julgar mais relevante. É importante, no entanto, que seja descrito o funcionamento das principais funções e procedimentos utilizados, bem como decisões tomadas relativas aos casos e detalhes de especificação que porventura estejam omissos no enunciado. Muito importante: os códigos utilizados na implementação devem ser inseridos na documentação. (Ex. Como foi feita a solução do trabalho, descrevendo os passos ou atividades envolvidas. Use figuras e diagramas para detalhar a solução escolhida)}
+
+\subsection{Objetivo principal}
+
+O objetivo principal deste projeto é implementar o Jogo da Vida de Conway, um autômato celular, de forma que ele receba os valores de entrada do terminal. O programa deve:
+
+\begin{enumerate}
+    \item \textbf{Receber Valores de Entrada:}
+    \begin{itemize}
+        \item Tamanho da grade bidimensional (reticulado).
+        \item Número de gerações a serem simuladas.
+        \item Estado inicial dos elementos na grade.
+    \end{itemize}
+    \item \textbf{Processamento dos Dados:}
+    \begin{itemize}
+        \item Ler os dados do terminal, garantindo que sejam valores inteiros válidos.
+        \item Ler a configuração inicial da grade bidimensional, composta por células que podem estar vivas (representadas por 1) ou mortas (representadas por 0).
+    \end{itemize}
+    \item \textbf{Evolução Recursiva:}
+    \begin{itemize}
+        \item Aplicar as regras do Jogo da Vida de Conway para evoluir a grade ao longo das gerações especificadas. As regras são:
+        \begin{itemize}
+            \item Qualquer célula viva com menos de dois vizinhos vivos morre de solidão.
+            \item Qualquer célula viva com dois ou três vizinhos vivos continua viva para a próxima geração.
+            \item Qualquer célula viva com mais de três vizinhos vivos morre de superpopulação.
+            \item Qualquer célula morta com exatamente três vizinhos vivos se torna uma célula viva.
+        \end{itemize}
+        \item Utilizar recursividade para calcular o estado da grade em cada geração até atingir o número de gerações desejado.
+    \end{itemize}
+    \item \textbf{Geração do Estágio Final:}
+    \begin{itemize}
+        \item Imprimir a configuração inicial da grade.
+        \item Calcular e imprimir a configuração final da grade após todas as gerações terem sido processadas.
+    \end{itemize}
+\end{enumerate}
+ 
+
+\subsection{Implementação e Especificação }
+
+Utiliza-se uma estrutura \verb|Reticulado| para representar a grade bidimensional:
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+typedef struct {
+    int** reticulado;
+    int tamanho;
+    int geracoes;
+} Reticulado;\end{lstlisting}
+Para manipular o reticulado de maneira eficiente, é necessário alocar dinamicamente a memória para armazenar as células. Isso é feito por meio da função alocarReticulado, que cria um reticulado bidimensional baseado no tamanho especificado. Esta função é usada para alocar memória para dois reticulados distintos que armazenam as progressões da grade até o estágio final.
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+Reticulado* alocarReticulado(int tamanho, int geracoes){
+    Reticulado* reticulado = (Reticulado*)malloc(sizeof(Reticulado));
+    reticulado -> tamanho = tamanho;
+    reticulado -> geracoes = geracoes;
+    reticulado -> reticulado = (int**)malloc(tamanho * sizeof(int*));
+    for(int i = 0; i < tamanho; i++){
+        reticulado  -> reticulado[i] = (int*)malloc(tamanho * sizeof(int));
+    }
+    return reticulado;
+}
+} Reticulado;\end{lstlisting}
+A função de desalocar o reticulado é responsável por liberar a memória alocada dinamicamente para os reticulados, garantindo que não haja vazamento de memória. Esta função percorre cada linha do reticulado, libera a memória de cada linha e, em seguida, libera a memória do ponteiro que armazena todas as linhas e, por fim, libera as outras informações presentes em um reticulado.
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+void desalocarReticulado(Reticulado* reticulado){
+    for(int i = 0; i < reticulado->tamanho; i++){
+        free(reticulado->reticulado[i]);
+    }
+    free(reticulado->reticulado);
+    free(reticulado);
+}
+\end{lstlisting}
+A função \verb|LeituraReticulado| tem o objetivo de ler o tamanho do reticulado e o número de gerações a partir da entrada do terminal, além de preencher a grade inicial do reticulado. A função realiza os seguintes passos:
+
+\begin{enumerate}
+    \item \textbf{Recepção de Dados}: A função recebe dois ponteiros (\verb|tamanho| e \verb|geracoes|) que representam as variáveis para o tamanho do reticulado e o número de gerações, respectivamente.
+    \item \textbf{Leitura e Validação}: O usuário é solicitado a inserir o tamanho do reticulado e o número de gerações. A função usa a função \verb|lerInteiro| para garantir que as entradas sejam inteiros válidos, com o tamanho sendo um número positivo e o número de gerações não negativo. Se os valores não forem válidos, a função continua solicitando entradas até que valores corretos sejam fornecidos.
+    \item \textbf{Alocação de Memória}: Após validar as entradas, a função utiliza a função \verb|alocarReticulado| para criar e alocar memória para um novo reticulado, baseado no tamanho e número de gerações fornecidos.
+    \item \textbf{Preenchimento do Reticulado}: Em seguida, a função solicita ao usuário que insira os valores iniciais para o reticulado, que deve ser uma matriz bidimensional. A função valida que os valores inseridos sejam apenas 0 ou 1, e preenche a grade do reticulado com esses valores.
+    \item \textbf{Retorno}: A função retorna o ponteiro para o reticulado alocado e preenchido com os dados fornecidos. Isso permite que o reticulado, com sua memória e dados, seja diretamente utilizado na criação de variáveis do tipo \verb|Reticulado| na função \verb|main|.
+\end{enumerate}
+ \begin{lstlisting}[caption={},label={lst:cod1},language=C]
+Reticulado* LeituraReticulado(int* tamanho, int* geracoes){
+    printf("Digite o tamanho do reticulado e o numero de geracoes:\n");
+    while(!lerInteiro(tamanho) || *tamanho <= 0 || !lerInteiro(geracoes) || *geracoes < 0){
+        printf("Entrada invalida. Por favor, insira valores inteiros positivos para o tamanho do reticulado e nao negativos para o numero de geracoes:\n");
+    }
+
+    Reticulado* reticulado = alocarReticulado(*tamanho, *geracoes);
+
+    printf("Digite o reticulado inicial (%d linhas com %d colunas):\n", *tamanho, *tamanho);
+    for(int i = 0; i < *tamanho; i++){
+        for(int j = 0; j < *tamanho; j++){
+            while(!lerInteiro(&reticulado -> reticulado[i][j]) || (reticulado -> reticulado[i][j] != 0 && reticulado -> reticulado[i][j] != 1)){
+                printf("Entrada invalida. Por favor, insira 0 ou 1 para a celula (%d, %d):\n", i, j);
+            }
+        }
+    }
+    return reticulado;
+}
+\end{lstlisting}
+A função \verb|lerInteiro| é responsável por ler e validar a entrada de inteiros fornecidos pelo usuário. Ela recebe um ponteiro para uma variável inteira, lê o valor do terminal e armazena-o na variável apontada. A função verifica se a entrada é um inteiro válido e atende aos requisitos especificados; se não for, ela limpa o buffer de entrada e solicita uma nova entrada até que um valor aceitável seja fornecido. 
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+void limparBuffer(){
+    int c;
+    while((c = getchar()) != '\n' && c != EOF);
+}
+
+bool lerInteiro(int* valor){
+    int resultado = scanf("%d", valor);
+    if(resultado != 1){
+        limparBuffer();
+    }
+    return resultado == 1;
+}
+\end{lstlisting}
+Para determinar o estado futuro de uma célula em um reticulado, é crucial saber quantos vizinhos vivos ela possui. Isso é feito por meio de uma função que calcula a quantidade de vizinhos vivos ao redor de uma célula específica. A função percorre as células vizinhas em torno da célula alvo e verifica o estado de cada uma delas. Como a representação das células é feita utilizando valores binários (0 para morto e 1 para vivo), a tarefa é simplificada, bastando somar os valores das células vizinhas para obter a quantidade de vizinhos vivos.
+
+A função realiza uma verificação para garantir que a célula vizinha está dentro dos limites da grade, evitando acessos inválidos à memória. Para isso, são feitas verificações que asseguram que os índices das células vizinhas não ultrapassem os limites da grade. Com base na contagem dos vizinhos vivos, a função pode então determinar se a célula deve permanecer viva, morrer, ou nascer de acordo com as regras definidas para a evolução do reticulado.
+ \begin{lstlisting}[caption={},label={lst:cod1},language=C]
+ int contarVizinhosVivos(Reticulado* reticulado, int linha, int coluna){
+    int vizinhosVivos = 0;
+    for(int i = -1; i <= 1; i++){
+        for(int j = -1; j <=1; j++){
+            if(i == 0 && j == 0)continue;
+            int novaLinha = linha + i;
+            int novaColuna = coluna + j;
+            if(novaLinha >= 0 && novaLinha < reticulado -> tamanho && novaColuna >= 0 && novaColuna < reticulado -> tamanho){
+                vizinhosVivos += reticulado -> reticulado[novaLinha][novaColuna];
+            }
+        }
+    }
+    return vizinhosVivos;
+}
+\end{lstlisting}
+A função que evolui recursivamente o reticulado do estágio inicial até o estágio final é projetada para ser chamada com o reticulado inicial, o reticulado para o qual as evoluções serão aplicadas, e as variáveis de geração atual e número total de gerações. A chamada inicial da função deve definir a geração atual como 0, que será utilizada para determinar o caso base da recursividade.
+
+O processo recursivo é encerrado quando a geração atual atinge o número total de gerações desejadas. Dentro da função, um loop percorre cada célula do reticulado atual e utiliza a função de contagem de células vivas para determinar o número de vizinhos vivos ao redor de cada célula. Em seguida, o estado de cada célula é atualizado com base nas regras do jogo. Se uma célula está viva (valor 1), ela pode permanecer viva ou morrer dependendo do número de vizinhos vivos, enquanto uma célula morta (valor 0) pode renascer se um número suficiente de vizinhos estiver vivo.
+
+Para decidir se uma célula deve continuar viva ou morrer, um operador ternário é utilizado. Caso as condições permitam que a célula continue viva, a posição correspondente no novo reticulado será definida como 1. Caso contrário, a célula será definida como 0, de acordo com o número de vizinhos vivos.
+
+Após atualizar todas as células do reticulado, o reticulado antigo é substituído pelo reticulado atualizado, refletindo a nova geração. A função então é chamada recursivamente com a nova geração e o contador de gerações incrementado. Esse processo continua até que todas as gerações sejam processadas, resultando na evolução completa do reticulado até o estágio final.
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+void evoluirReticulado(Reticulado* reticuladoAtual, Reticulado* novoReticulado, int tamanho, int geracaoAtual, int geracoes){
+    if(geracaoAtual == geracoes) return;
+
+    for(int i = 0; i < tamanho; i++){
+        for(int j = 0; j < tamanho; j++){
+            int vizinhosVivos = contarVizinhosVivos(reticuladoAtual, i, j);
+            if(reticuladoAtual -> reticulado[i][j] == 1){
+                novoReticulado -> reticulado[i][j] = (vizinhosVivos == 2 || vizinhosVivos == 3) ? 1 : 0;
+            }
+            else{
+                novoReticulado -> reticulado[i][j] = (vizinhosVivos == 3) ? 1 : 0;
+            }
+        }
+    }
+
+    for(int i = 0; i < tamanho; i++){
+        for(int j = 0; j < tamanho; j++){
+            reticuladoAtual -> reticulado[i][j] = novoReticulado -> reticulado[i][j];
+        }
+    }
+
+    evoluirReticulado(reticuladoAtual, novoReticulado, tamanho, geracaoAtual + 1, geracoes);
+}
+\end{lstlisting}
+A função \verb|imprimeReticulado| é responsável por imprimir a grade do reticulado na saída padrão.  
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+void imprimeReticulado(Reticulado* reticulado){
+    for(int i = 0; i < reticulado -> tamanho; i++){
+        for(int j = 0; j < reticulado -> tamanho; j++){
+            printf("%d ", reticulado -> reticulado[i][j]);
+        }
+        printf("\n");
+    }
+}
+\end{lstlisting}
+A função \verb|main| gerencia o ciclo completo do programa, começando pela leitura dos dados e alocação de memória. Inicialmente, a função \verb|LeituraReticulado| coleta o tamanho da grade e o número de gerações, alocando e preenchendo o reticulado inicial com os valores fornecidos pelo usuário. Em seguida, a memória é alocada para um segundo reticulado, que será utilizado para armazenar o estado evoluído da grade.
+
+A função \verb|imprimeReticulado| é chamada para exibir a configuração inicial do reticulado antes de qualquer evolução. Posteriormente, a função \verb|evoluirReticulado| realiza a evolução recursiva do reticulado inicial até atingir o número de gerações especificado, atualizando o reticulado com base nas regras definidas.
+
+Após a evolução, o reticulado final é exibido novamente usando a função \verb|imprimeReticulado|. Por fim, a memória alocada para ambos os reticulados é liberada com a função \verb|desalocarReticulado|, garantindo que todos os recursos sejam adequadamente liberados e que não haja vazamento de memória.
+\begin{lstlisting}[caption={},label={lst:cod1},language=C]
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "automato.h"
+
+int main(){
+    int tamanho;
+    int geracoes;
+    Reticulado* reticulado = LeituraReticulado(&tamanho, &geracoes);
+    Reticulado* novoReticulado = alocarReticulado(tamanho, geracoes);
+    printf("Reticulado Inicial: \n");
+    imprimeReticulado(reticulado);
+    evoluirReticulado(reticulado, novoReticulado, tamanho, 0, geracoes);
+    printf("Reticulado Final: \n");
+    imprimeReticulado(novoReticulado);
+    desalocarReticulado(reticulado);
+    desalocarReticulado(novoReticulado);
+    return 0;
+}
+\end{lstlisting}
+
+ 
+\clearpage
+\section{Experimentos}
+\DESCRICAO{Descreva os experimento feitos, ou seja, o que você está medindo e em qual hardware você está fazendo tal medição. Normalmente, buscamos na computação medir o tempo de execução e o consumo de memória.}
+
+O código foi testado no Ubuntu para verificar sua funcionalidade, e o Valgrind foi utilizado para avaliar a eficiência da alocação de memória. Durante os testes, observou-se que o programa usou uma quantidade mínima de memória e não apresentou erros, o que é um indicativo de um desempenho eficiente e estável. 
+
+==349348== HEAP SUMMARY:
+==349348==     in use at exit: 0 bytes in 0 blocks
+==349348==   total heap usage: 16 allocs, 16 frees, 2,360 bytes allocated
+==349348==
+==349348== All heap blocks were freed -- no leaks are possible
+==349348==
+==349348== For lists of detected and suppressed errors, rerun with: -s
+==349348== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+
+\clearpage
+\section{Resultados}
+
+\DESCRICAO{Descreva os resultados e comente os mesmos, critique ou elogie sua solução nos pontos fracos e fortes, respectivamente. Coloque gráficos que mostre, por exemplo, o tempo de execução das $n$ soluções propostas. Ex. No caso da contagem das palavras - coloque um gráfico com o tempo de execução da solução com a primeira proposta, com a segunda proposta, etc..., mostrando assim a viabilidade da solução proposta).}
+
+Gostei bastante da minha implementação para a resolução do problema. Realizei verificações importantes e eficientes. Acredito que o uso de funções pequenas e bem estruturadas, que operam dentro de outras funções, me trouxe um aprendizado significativo sobre a estruturação do código e o reaproveitamento de funcionalidades. 
+
+\clearpage
+\section{Considerações Finais}
+\DESCRICAO{Comentários gerais sobre o trabalho e as principais dificuldades encontradas em sua implementação.
+Descreva o seu processo de implementação deste trabalho. Aponte coisas que gostou bem como aquelas que o desagradou. Avalie o que o motivou, conhecimentos que adquiriu, entre outros.
+}
+Gostei bastante do trabalho, que me deu uma clareada significativa sobre recursividade. Compreendi que posso usar esse recurso para encadear soluções necessárias para gerar outras soluções. Também percebi que este algoritmo tem ótimas aplicabilidades, como na previsão de incêndios florestais e outras situações similares. O que mais me motivou foi exatamente a ideia de previsão, pois, embora eu tenha regras específicas para uma previsão, estas se referem a um número determinado de horas ou gerações, o que inicialmente não se aplica ao que eu desejo. No entanto, pude ver como adaptar o conceito para alcançar meus objetivos. 
+
+\clearpage
+\bibliographystyle{plain}
+\bibliography{refs}
+
+/section 
+
+
+\end{document}
